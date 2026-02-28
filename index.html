@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Obsidian Studio Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- THE OBSIDIAN STUDIO COMPANION ---
+        // DESIGNED FOR: An artist with a Goth/Alternative aesthetic.
+        // ARCHITECTURE: End-to-End Encrypted Relational Ledger.
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'obsidian-studio-companion';
+
+        window.StudioApp = {
+            db, auth, appId, 
+            currentUser: null,
+            masterKey: localStorage.getItem('obsidian_master_key') || null,
+            
+            // Encryption Engine
+            encrypt: (text) => {
+                if (!window.StudioApp.masterKey) return text;
+                return CryptoJS.AES.encrypt(text, window.StudioApp.masterKey).toString();
+            },
+            decrypt: (ciphertext) => {
+                if (!window.StudioApp.masterKey) return ciphertext;
+                try {
+                    const bytes = CryptoJS.AES.decrypt(ciphertext, window.StudioApp.masterKey);
+                    const original = bytes.toString(CryptoJS.enc.Utf8);
+                    return original || "[Decryption Failed - Check Master Key]";
+                } catch (e) { return "[Locked]"; }
+            }
+        };
+
+        // --- AUTHENTICATION BOOTSTRAP (Exposed globally to trigger AFTER Gateway) ---
+        window.StudioApp.initAuth = async () => {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token);
+            } else {
+                await signInAnonymously(auth);
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            window.StudioApp.currentUser = user;
+            if (user) {
+                document.getElementById('authStatus').innerText = "Vessel Connected: " + user.uid.substring(0,8);
+                startDataListeners(user.uid);
+            }
+        });
+
+        // --- DATA LISTENERS ---
+        function startDataListeners(userId) {
+            const collections = ['zones', 'grimoire', 'demons', 'reviews'];
+            collections.forEach(colName => {
+                const q = collection(db, 'artifacts', appId, 'users', userId, colName);
+                onSnapshot(q, (snapshot) => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    window.dispatchEvent(new CustomEvent('studioDataUpdate', { detail: { type: colName, data } }));
+                }, (error) => console.error("Database Error:", error));
+            });
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #d4d4d8; overflow-x: hidden; }
+        h1, h2, h3, .goth-font { font-family: 'Cinzel', serif; letter-spacing: 0.05em; }
+        @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.5); opacity: 0.2; } }
+        .breathe-circle { animation: breathe 8s infinite ease-in-out; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #09090b; }
+        ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #7f1d1d; }
+        .hidden-section { display: none; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        input, select, textarea { background-color: #18181b !important; border: 1px solid #27272a !important; color: #f4f4f5 !important; border-radius: 2px; }
+        input:focus { border-color: #7f1d1d !important; outline: none; }
+        .ledger-container { max-height: 400px; overflow-y: auto; scrollbar-width: thin; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+    <!-- GATEWAY (Stranger Shield) -->
+    <section id="gatewaySection" class="fixed inset-0 z-[200] bg-black flex items-center justify-center p-6">
+        <div class="max-w-md w-full bg-zinc-950 border border-zinc-800 p-8 rounded-sm text-center">
+            <h2 class="text-2xl font-bold text-zinc-100 goth-font mb-4 uppercase tracking-widest">Restricted Void</h2>
+            <p class="text-zinc-500 text-sm mb-6 font-mono leading-relaxed">
+                Enter the access phrase to initialize the studio. Unauthorized connections are blocked from the server.
+            </p>
+            <input type="password" id="gatewayInput" placeholder="Access phrase..." class="w-full p-3 mb-4 text-center">
+            <button onclick="checkGateway()" class="w-full py-3 bg-zinc-800 text-white font-bold uppercase tracking-widest text-sm hover:bg-zinc-700 transition border border-zinc-700">Enter</button>
+        </div>
+    </section>
+
+    <!-- SETUP MASTER KEY (Privacy Shield) -->
+    <section id="setupKeySection" class="fixed inset-0 z-[100] bg-black flex items-center justify-center p-6 hidden">
+        <div class="max-w-md w-full bg-zinc-950 border border-zinc-800 p-8 rounded-sm text-center">
+            <h2 class="text-2xl font-bold text-zinc-100 goth-font mb-4 uppercase tracking-widest">Seal The Void</h2>
+            <p class="text-zinc-500 text-sm mb-6 font-mono leading-relaxed">
+                Create a Master Key. This key encrypts your canvas. Without it, your data is just gibberish. **It is never saved to the cloud.** If you lose it, your history is lost forever.
+            </p>
+            <input type="password" id="masterKeyInput" placeholder="Enter Secret Key..." class="w-full p-3 mb-4 text-center">
+            <button onclick="setMasterKey()" class="w-full py-3 bg-red-900 text-white font-bold uppercase tracking-widest text-sm hover:bg-red-800 transition border border-red-700">Initialize Vessel</button>
+        </div>
+    </section>
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-black/90 backdrop-blur-md border-b border-zinc-900 shadow-xl">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
+            <span class="text-lg font-bold text-zinc-100 goth-font uppercase tracking-widest">🦇 Obsidian Studio</span>
+            <div class="flex space-x-2">
+                <button onclick="navigateTo('dashboard')" class="px-3 py-1 text-xs font-bold uppercase tracking-tighter text-zinc-500 hover:text-white nav-btn border border-zinc-800 bg-zinc-900" data-target="dashboard">Void</button>
+                <button onclick="navigateTo('critic')" class="px-3 py-1 text-xs font-bold uppercase tracking-tighter text-zinc-500 hover:text-white nav-btn border border-zinc-800" data-target="critic">Demon</button>
+                <button onclick="navigateTo('reflection')" class="px-3 py-1 text-xs font-bold uppercase tracking-tighter text-zinc-500 hover:text-white nav-btn border border-zinc-800" data-target="reflection">Exhibition</button>
+                <button onclick="navigateTo('emergency')" class="px-3 py-1 text-xs font-bold uppercase tracking-tighter text-red-900 hover:text-red-500 nav-btn border border-red-950" data-target="emergency">Panic</button>
+            </div>
+        </div>
+        <div id="authStatus" class="text-[10px] text-center text-zinc-700 font-mono py-1 border-t border-zinc-950 bg-black">Connecting...</div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="mainContent" class="flex-grow max-w-6xl mx-auto px-4 py-8 w-full hidden">
+
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="fade-in">
+            <div class="text-center mb-12">
+                <h1 class="text-4xl font-bold text-zinc-100 mb-2 goth-font uppercase tracking-widest">The Palette of Being</h1>
+                <p class="text-zinc-500 text-sm font-mono">Timestamped telemetry of the creative spirit.</p>
+            </div>
+
+            <!-- Log State -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+                <button onclick="logState('green')" class="bg-zinc-900/50 border border-zinc-800 p-6 rounded-sm hover:border-zinc-500 transition-all group">
+                    <div class="text-3xl mb-2 opacity-60 group-hover:opacity-100 transition">🕯️</div>
+                    <div class="goth-font text-zinc-200 uppercase tracking-widest">The Ritual</div>
+                    <div class="text-[10px] text-zinc-600 font-mono mt-1">Balanced / Flow</div>
+                </button>
+                <button onclick="logState('red')" class="bg-red-950/10 border border-red-900/20 p-6 rounded-sm hover:border-red-700 transition-all group">
+                    <div class="text-3xl mb-2 opacity-40 group-hover:opacity-100 transition">🩸</div>
+                    <div class="goth-font text-red-500 uppercase tracking-widest">The Inferno</div>
+                    <div class="text-[10px] text-red-900 font-mono mt-1">Panic / Overload</div>
+                </button>
+                <button onclick="logState('blue')" class="bg-indigo-950/10 border border-indigo-900/20 p-6 rounded-sm hover:border-indigo-700 transition-all group">
+                    <div class="text-3xl mb-2 opacity-40 group-hover:opacity-100 transition">🕳️</div>
+                    <div class="goth-font text-indigo-500 uppercase tracking-widest">The Abyss</div>
+                    <div class="text-[10px] text-indigo-900 font-mono mt-1">Freeze / Blocked</div>
+                </button>
+            </div>
+
+            <!-- Visualization & Ledger -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+                <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm">
+                    <h3 class="text-sm font-bold text-zinc-400 mb-6 uppercase tracking-widest goth-font">Atmospheric Oscillations</h3>
+                    <div class="chart-container"><canvas id="stateChart"></canvas></div>
+                </div>
+                <div class="bg-zinc-950 border border-zinc-900 p-6 rounded-sm flex flex-col h-[400px]">
+                    <h3 class="text-sm font-bold text-zinc-400 mb-4 uppercase tracking-widest goth-font">Temporal Records</h3>
+                    <div id="zoneLedger" class="ledger-container space-y-2 flex-grow"></div>
+                </div>
+            </div>
+
+            <!-- Grimoire (Daily) -->
+            <div class="bg-zinc-950 border border-zinc-900 p-8 rounded-sm">
+                <h3 class="text-xl font-bold text-zinc-200 mb-6 goth-font uppercase tracking-widest">The Daily Grimoire</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-4">
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Morning Ward (Energy Boundary)</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="morningInput" class="flex-grow p-2 text-sm bg-black" placeholder="Define your boundary...">
+                                <button onclick="saveLog('grimoire', {type:'morning', text: document.getElementById('morningInput').value})" class="px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[10px] font-bold uppercase tracking-widest">Seal</button>
+                            </div>
+                        </div>
+                        <div class="space-y-1">
+                            <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Evening Offering (Creation)</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="eveningInput" class="flex-grow p-2 text-sm bg-black" placeholder="One small creation...">
+                                <button onclick="saveLog('grimoire', {type:'evening', text: document.getElementById('eveningInput').value})" class="px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[10px] font-bold uppercase tracking-widest">Seal</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="grimoireLedger" class="ledger-container border-l border-zinc-900 pl-6 space-y-3"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CRITIC (THE DEMON) -->
+        <section id="critic" class="hidden-section fade-in">
+            <div class="mb-12 border-b border-zinc-900 pb-6">
+                <h2 class="text-3xl font-bold text-zinc-100 goth-font tracking-widest uppercase">The Inner Demon</h2>
+                <p class="text-zinc-500 text-sm font-mono">Extract the toxin. Transmute it into structural geometry.</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-1 bg-black border border-red-900/30 p-6 rounded-sm shadow-[0_0_20px_rgba(153,27,27,0.05)]">
+                    <h3 class="text-red-500 goth-font text-lg mb-4 uppercase tracking-widest">The Whisper</h3>
+                    <textarea id="toxicInput" class="w-full h-32 p-3 text-sm mb-4" placeholder="Type the poison here..."></textarea>
+                    <button onclick="transmuteDemon()" class="w-full py-3 bg-red-900/80 hover:bg-red-800 text-white font-bold uppercase tracking-widest text-xs border border-red-700">Transmute</button>
+                </div>
+                <div class="lg:col-span-2 bg-zinc-950 p-6 rounded-sm border border-zinc-900">
+                    <h3 class="text-zinc-400 goth-font text-lg mb-4 uppercase tracking-widest">Transmutations</h3>
+                    <div id="demonLedger" class="ledger-container space-y-4"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- EXHIBITION REVIEW -->
+        <section id="reflection" class="hidden-section fade-in">
+            <div class="mb-12 border-b border-zinc-900 pb-6">
+                <h2 class="text-3xl font-bold text-zinc-100 goth-font tracking-widest uppercase">Exhibition Review</h2>
+                <p class="text-zinc-500 text-sm font-mono">Review the cycle. Identify the patterns of the last 24 hours.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div class="bg-zinc-950 p-8 border border-zinc-900 rounded-sm space-y-6">
+                    <div>
+                        <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">The Catalyst (Trigger)</label>
+                        <input type="text" id="revTrigger" class="w-full p-2 text-sm bg-black">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Vessel State (Conditions)</label>
+                        <select id="revConditions" class="w-full p-2 text-sm bg-black">
+                            <option>Primed (Rested/Fed)</option>
+                            <option>Dry Brush (Depleted)</option>
+                            <option>Fractured (Overloaded)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">The Next Layer (Adjustment)</label>
+                        <textarea id="revAdjustment" class="w-full p-2 text-sm bg-black h-24"></textarea>
+                    </div>
+                    <button onclick="saveReview()" class="w-full py-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-xs font-bold uppercase tracking-widest">Log Autopsy</button>
+                </div>
+                <div id="reviewLedger" class="ledger-container space-y-4"></div>
+            </div>
+        </section>
+
+        <!-- PANIC (EMERGENCY) -->
+        <section id="emergency" class="hidden-section fade-in">
+            <div class="bg-red-950/20 border-l-4 border-red-800 p-8 rounded-r-sm mb-12">
+                <h2 class="text-3xl font-bold text-red-500 goth-font uppercase tracking-widest mb-2">Protocol: System Override</h2>
+                <p class="text-red-300/60 font-mono text-sm">Hardware is overloaded. Cease creative execution. Initiate sensory lock.</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div class="bg-black border border-zinc-900 p-12 flex flex-col items-center justify-center min-h-[400px]">
+                    <h3 class="goth-font text-zinc-500 uppercase mb-12 tracking-widest">The Metronome</h3>
+                    <div class="relative flex items-center justify-center">
+                        <div class="absolute w-48 h-48 bg-red-900/10 rounded-full breathe-circle"></div>
+                        <div class="relative w-32 h-32 border-2 border-red-900/50 rounded-full flex items-center justify-center">
+                            <div class="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center text-[10px] text-red-500 font-bold tracking-widest uppercase">Sync</div>
+                        </div>
+                    </div>
+                    <p class="mt-12 text-zinc-600 font-mono text-xs">Inhale [4s] - Hold [4s] - Exhale [4s] - Hold [4s]</p>
+                </div>
+                <div class="space-y-6">
+                    <div class="bg-zinc-950 p-6 border border-zinc-900">
+                        <h4 class="text-zinc-200 goth-font uppercase text-xs mb-4 tracking-widest">👁️ Sensory Anchor</h4>
+                        <ul class="text-xs text-zinc-500 font-mono space-y-3">
+                            <li>[5] Elements you <span class="text-zinc-100">SEE</span></li>
+                            <li>[4] Textures you <span class="text-zinc-100">TOUCH</span></li>
+                            <li>[3] Frequencies you <span class="text-zinc-100">HEAR</span></li>
+                            <li>[2] Scents you <span class="text-zinc-100">SMELL</span></li>
+                            <li>[1] Flavor you <span class="text-zinc-100">TASTE</span></li>
+                        </ul>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="alert('Vagus Nerve Shock: Apply freezing water to your face.')" class="bg-zinc-950 border border-zinc-900 p-6 text-xs goth-font uppercase text-zinc-500 hover:text-white transition">Cold Shock</button>
+                        <button onclick="alert('Kinetic Purge: Push against a wall with maximum force for 10s.')" class="bg-zinc-950 border border-zinc-900 p-6 text-xs goth-font uppercase text-zinc-500 hover:text-white transition">Kinetic Reset</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // =========================================================================
+        // Only someone who knows this word can trigger your Firebase database.
+        const SECRET_ACCESS_PHRASE = "nibbling"; 
+        // =========================================================================
+
+        let rawData = { zones: [], grimoire: [], demons: [], reviews: [] };
+        let chartInstance = null;
+
+        // --- GATEWAY CHECK (Bot/Stranger Shield) ---
+        function checkGateway() {
+            const val = document.getElementById('gatewayInput').value.toLowerCase().trim();
+            if (val === SECRET_ACCESS_PHRASE) {
+                document.getElementById('gatewaySection').classList.add('hidden');
+                localStorage.setItem('obsidian_gateway_cleared', 'true');
+                proceedToStudio();
+            } else {
+                alert("Access Denied. Incorrect phrase.");
+            }
+        }
+
+        // --- MASTER KEY SET (Encryption Shield) ---
+        function setMasterKey() {
+            const val = document.getElementById('masterKeyInput').value;
+            if (val.length < 4) { alert("Key must be stronger."); return; }
+            localStorage.setItem('obsidian_master_key', val);
+            window.StudioApp.masterKey = val;
+            document.getElementById('setupKeySection').classList.add('hidden');
+            document.getElementById('mainContent').classList.remove('hidden');
+            
+            // Connect to Cloud ONLY AFTER Master Key is set
+            if(typeof window.StudioApp.initAuth === 'function') {
+                window.StudioApp.initAuth(); 
+            }
+            renderAll();
+        }
+
+        function proceedToStudio() {
+            if (!window.StudioApp.masterKey) {
+                // Needs Encryption Key
+                document.getElementById('setupKeySection').classList.remove('hidden');
+            } else {
+                // Fully Cleared -> Enter App and Connect to Cloud
+                document.getElementById('mainContent').classList.remove('hidden');
+                if(typeof window.StudioApp.initAuth === 'function') {
+                    window.StudioApp.initAuth();
+                }
+            }
+        }
+
+        // --- STARTUP LOGIC ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const gatewayCleared = localStorage.getItem('obsidian_gateway_cleared');
+            if (gatewayCleared === 'true') {
+                document.getElementById('gatewaySection').classList.add('hidden');
+                proceedToStudio();
+            }
+            // If false, the HTML naturally shows the gatewaySection
+        });
+
+        // --- NAVIGATION ---
+        function navigateTo(id) {
+            document.querySelectorAll('section').forEach(s => {
+                if(s.id !== 'gatewaySection' && s.id !== 'setupKeySection') {
+                    s.classList.add('hidden-section');
+                }
+            });
+            document.getElementById(id).classList.remove('hidden-section');
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.toggle('bg-zinc-900', b.dataset.target === id);
+                b.classList.toggle('text-white', b.dataset.target === id);
+            });
+            window.scrollTo(0,0);
+        }
+
+        // --- DATA OPS ---
+        window.addEventListener('studioDataUpdate', (e) => {
+            rawData[e.detail.type] = e.detail.data;
+            renderAll();
+        });
+
+        async function logState(zone) {
+            const user = window.StudioApp.auth.currentUser;
+            if (!user) return;
+            const path = `artifacts/${window.StudioApp.appId}/users/${user.uid}/zones`;
+            const entry = { zone, timestamp: Date.now(), dateStr: new Date().toLocaleDateString() };
+            await addDoc(collection(window.StudioApp.db, path), entry);
+        }
+
+        async function saveLog(col, data) {
+            const user = window.StudioApp.auth.currentUser;
+            if (!user) return;
+            const encryptedData = {};
+            for (let k in data) encryptedData[k] = window.StudioApp.encrypt(data[k]);
+            encryptedData.timestamp = Date.now();
+            await addDoc(collection(window.StudioApp.db, `artifacts/${window.StudioApp.appId}/users/${user.uid}/${col}`), encryptedData);
+            if (col === 'grimoire') { document.getElementById('morningInput').value = ''; document.getElementById('eveningInput').value = ''; }
+        }
+
+        async function transmuteDemon() {
+            const val = document.getElementById('toxicInput').value;
+            if (!val) return;
+            const truths = ["This is a construction line.", "Negative Space is structural.", "A critique is a tool.", "The Artist is safe."];
+            const truth = truths[Math.floor(Math.random()*truths.length)];
+            await saveLog('demons', { toxic: val, truth: truth });
+            document.getElementById('toxicInput').value = '';
+        }
+
+        async function saveReview() {
+            const trigger = document.getElementById('revTrigger').value;
+            const conditions = document.getElementById('revConditions').value;
+            const adjustment = document.getElementById('revAdjustment').value;
+            await saveLog('reviews', { trigger, conditions, adjustment });
+            document.getElementById('revTrigger').value = ''; document.getElementById('revAdjustment').value = '';
+        }
+
+        async function deleteItem(col, id) {
+            if (!confirm("Erase from history?")) return;
+            const user = window.StudioApp.auth.currentUser;
+            const docRef = doc(window.StudioApp.db, `artifacts/${window.StudioApp.appId}/users/${user.uid}/${col}`, id);
+            await deleteDoc(docRef);
+        }
+
+        // --- RENDERING ---
+        function renderAll() {
+            renderZones();
+            renderGrimoire();
+            renderDemons();
+            renderReviews();
+            updateChart();
+        }
+
+        function renderZones() {
+            const list = document.getElementById('zoneLedger');
+            list.innerHTML = '';
+            const labels = { green: '🕯️ Ritual', red: '🩸 Inferno', blue: '🕳️ Abyss' };
+            const sorted = [...rawData.zones].sort((a,b) => b.timestamp - a.timestamp);
+            sorted.forEach(z => {
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-black/40 p-3 border border-zinc-900 text-[10px]";
+                div.innerHTML = `<div><span class="text-zinc-600 mr-2 font-mono">${new Date(z.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span><span class="font-bold uppercase tracking-widest text-zinc-300">${labels[z.zone]}</span></div>
+                <button onclick="deleteItem('zones', '${z.id}')" class="text-zinc-800 hover:text-red-900">✕</button>`;
+                list.appendChild(div);
+            });
+        }
+
+        function renderGrimoire() {
+            const list = document.getElementById('grimoireLedger');
+            list.innerHTML = '';
+            [...rawData.grimoire].sort((a,b) => b.timestamp - a.timestamp).forEach(g => {
+                const div = document.createElement('div');
+                div.className = "border-b border-zinc-900/50 pb-2 mb-2 last:border-0";
+                div.innerHTML = `<div class="flex justify-between items-start mb-1">
+                    <span class="text-[8px] font-bold text-zinc-600 tracking-widest uppercase">${window.StudioApp.decrypt(g.type)}</span>
+                    <button onclick="deleteItem('grimoire', '${g.id}')" class="text-[10px] text-zinc-800 hover:text-red-900">✕</button>
+                </div><p class="text-xs italic text-zinc-400">"${window.StudioApp.decrypt(g.text)}"</p>`;
+                list.appendChild(div);
+            });
+        }
+
+        function renderDemons() {
+            const list = document.getElementById('demonLedger');
+            list.innerHTML = '';
+            [...rawData.demons].sort((a,b) => b.timestamp - a.timestamp).forEach(d => {
+                const div = document.createElement('div');
+                div.className = "bg-black p-4 border-l-2 border-red-900 space-y-2 flex justify-between";
+                div.innerHTML = `<div class="w-full">
+                    <div class="text-[9px] text-red-950 font-bold uppercase mb-1 tracking-widest">Demon: "${window.StudioApp.decrypt(d.toxic)}"</div>
+                    <div class="text-xs text-zinc-300 font-mono italic">"${window.StudioApp.decrypt(d.truth)}"</div>
+                </div><button onclick="deleteItem('demons', '${d.id}')" class="text-zinc-800 hover:text-red-900">✕</button>`;
+                list.appendChild(div);
+            });
+        }
+
+        function renderReviews() {
+            const list = document.getElementById('reviewLedger');
+            list.innerHTML = '';
+            [...rawData.reviews].sort((a,b) => b.timestamp - a.timestamp).forEach(r => {
+                const div = document.createElement('div');
+                div.className = "bg-zinc-950 p-5 border border-zinc-900 space-y-3";
+                div.innerHTML = `<div class="flex justify-between border-b border-zinc-900 pb-2 mb-2">
+                    <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">${new Date(r.timestamp).toLocaleDateString()}</span>
+                    <button onclick="deleteItem('reviews', '${r.id}')" class="text-zinc-800 hover:text-red-900">✕</button>
+                </div>
+                <div class="text-xs text-zinc-400"><span class="text-[8px] block uppercase tracking-widest font-bold mb-1 opacity-40">Catalyst</span> ${window.StudioApp.decrypt(r.trigger)}</div>
+                <div class="text-xs text-zinc-400"><span class="text-[8px] block uppercase tracking-widest font-bold mb-1 opacity-40">Vessel State</span> ${window.StudioApp.decrypt(r.conditions)}</div>
+                <div class="text-xs text-zinc-300 italic">"${window.StudioApp.decrypt(r.adjustment)}"</div>`;
+                list.appendChild(div);
+            });
+        }
+
+        function updateChart() {
+            const counts = { green: [0,0,0,0,0,0,0], red: [0,0,0,0,0,0,0], blue: [0,0,0,0,0,0,0] };
+            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            rawData.zones.forEach(z => {
+                const d = new Date(z.timestamp);
+                const dayIdx = (d.getDay() + 6) % 7;
+                counts[z.zone][dayIdx]++;
+            });
+            if (chartInstance) {
+                chartInstance.data.datasets[0].data = counts.green;
+                chartInstance.data.datasets[1].data = counts.red;
+                chartInstance.data.datasets[2].data = counts.blue;
+                chartInstance.update();
+            } else {
+                const ctx = document.getElementById('stateChart').getContext('2d');
+                chartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: days,
+                        datasets: [
+                            { label: 'Ritual', data: counts.green, backgroundColor: '#d4d4d8' },
+                            { label: 'Inferno', data: counts.red, backgroundColor: '#7f1d1d' },
+                            { label: 'Abyss', data: counts.blue, backgroundColor: '#312e81' }
+                        ]
+                    },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false, 
+                        scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#52525b', font: {family: 'monospace'} } }, y: { stacked: true, beginAtZero: true, grid: { color: '#18181b' }, ticks: { color: '#52525b', stepSize: 1 } } },
+                        plugins: { legend: { display: false } }
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
