@@ -18,7 +18,17 @@
         // DESIGNED FOR: An artist with a Goth/Alternative aesthetic.
         // ARCHITECTURE: End-to-End Encrypted Relational Ledger.
 
-        const firebaseConfig = JSON.parse(__firebase_config);
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKN8gS_cvl_y7sMgseOMqPS_N1USdBopU",
+            authDomain: "the-obsidian-studio-companion.firebaseapp.com",
+            projectId: "the-obsidian-studio-companion",
+            storageBucket: "the-obsidian-studio-companion.firebasestorage.app",
+            messagingSenderId: "527265641748",
+            appId: "1:527265641748:web:a338c8dcd6a8dbd971fe01",
+            measurementId: "G-J3Z1V31XYG"
+        };
+
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
