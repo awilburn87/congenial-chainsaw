@@ -7,82 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- THE OBSIDIAN STUDIO COMPANION ---
-        // DESIGNED FOR: An artist with a Goth/Alternative aesthetic.
-        // ARCHITECTURE: End-to-End Encrypted Relational Ledger.
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCKN8gS_cvl_y7sMgseOMqPS_N1USdBopU",
-            authDomain: "the-obsidian-studio-companion.firebaseapp.com",
-            projectId: "the-obsidian-studio-companion",
-            storageBucket: "the-obsidian-studio-companion.firebasestorage.app",
-            messagingSenderId: "527265641748",
-            appId: "1:527265641748:web:a338c8dcd6a8dbd971fe01",
-            measurementId: "G-J3Z1V31XYG"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        // Using your projectId as the database path identifier
-        const appId = 'the-obsidian-studio-companion';
-
-        window.StudioApp = {
-            db, auth, appId, 
-            currentUser: null,
-            masterKey: localStorage.getItem('obsidian_master_key') || null,
-            
-            // Encryption Engine
-            encrypt: (text) => {
-                if (!window.StudioApp.masterKey) return text;
-                return CryptoJS.AES.encrypt(text, window.StudioApp.masterKey).toString();
-            },
-            decrypt: (ciphertext) => {
-                if (!window.StudioApp.masterKey) return ciphertext;
-                try {
-                    const bytes = CryptoJS.AES.decrypt(ciphertext, window.StudioApp.masterKey);
-                    const original = bytes.toString(CryptoJS.enc.Utf8);
-                    return original || "[Decryption Failed - Check Master Key]";
-                } catch (e) { return "[Locked]"; }
-            }
-        };
-
-        // --- AUTHENTICATION BOOTSTRAP (Exposed globally to trigger AFTER Gateway) ---
-        window.StudioApp.initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-
-        onAuthStateChanged(auth, (user) => {
-            window.StudioApp.currentUser = user;
-            if (user) {
-                document.getElementById('authStatus').innerText = "Vessel Connected: " + user.uid.substring(0,8);
-                startDataListeners(user.uid);
-            }
-        });
-
-        // --- DATA LISTENERS ---
-        function startDataListeners(userId) {
-            const collections = ['zones', 'grimoire', 'demons', 'reviews'];
-            collections.forEach(colName => {
-                const q = collection(db, 'artifacts', appId, 'users', userId, colName);
-                onSnapshot(q, (snapshot) => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    window.dispatchEvent(new CustomEvent('studioDataUpdate', { detail: { type: colName, data } }));
-                }, (error) => console.error("Database Error:", error));
-            });
-        }
-    </script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600&display=swap');
@@ -295,30 +219,63 @@
 
     </main>
 
-    <script>
-        // =========================================================================
-        // 🛡️ SECURITY UPDATE: OBFUSCATED HASH GENERATION
-        // We use the ASCII character codes for "nibbling" to build the string dynamically.
-        // This hides the plaintext from GitHub's security scanners while still allowing
-        // CryptoJS to generate the correct secure hash at runtime!
+    <!-- UNIFIED SCRIPT BLOCK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, deleteDoc, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- FIREBASE CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCKN8gS_cvl_y7sMgseOMqPS_N1USdBopU",
+            authDomain: "the-obsidian-studio-companion.firebaseapp.com",
+            projectId: "the-obsidian-studio-companion",
+            storageBucket: "the-obsidian-studio-companion.firebasestorage.app",
+            messagingSenderId: "527265641748",
+            appId: "1:527265641748:web:a338c8dcd6a8dbd971fe01",
+            measurementId: "G-J3Z1V31XYG"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = 'the-obsidian-studio-companion';
+
+        // --- APP STATE & SECRETS ---
         // ASCII for n-i-b-b-l-i-n-g: 110, 105, 98, 98, 108, 105, 110, 103
         const GATEWAY_HASH = CryptoJS.SHA256(String.fromCharCode(110, 105, 98, 98, 108, 105, 110, 103)).toString(); 
-        // =========================================================================
-
+        
         let rawData = { zones: [], grimoire: [], demons: [], reviews: [] };
         let chartInstance = null;
 
-        // --- KEYBOARD EVENT LISTENER (UX ENHANCEMENT) ---
-        // Executes the passed callback function if the user presses 'Enter' without holding 'Shift'
-        function handleEnter(event, callback) {
+        window.StudioApp = {
+            db, auth, appId, 
+            currentUser: null,
+            masterKey: localStorage.getItem('obsidian_master_key') || null,
+            encrypt: (text) => {
+                if (!window.StudioApp.masterKey) return text;
+                return CryptoJS.AES.encrypt(text, window.StudioApp.masterKey).toString();
+            },
+            decrypt: (ciphertext) => {
+                if (!window.StudioApp.masterKey) return ciphertext;
+                try {
+                    const bytes = CryptoJS.AES.decrypt(ciphertext, window.StudioApp.masterKey);
+                    const original = bytes.toString(CryptoJS.enc.Utf8);
+                    return original || "[Decryption Failed - Check Master Key]";
+                } catch (e) { return "[Locked]"; }
+            }
+        };
+
+        // --- EXPOSED UI FUNCTIONS (Attached to window so HTML buttons can see them) ---
+
+        window.handleEnter = function(event, callback) {
             if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault(); // Prevents default new-line in textareas or form submission
+                event.preventDefault(); 
                 callback();
             }
-        }
+        };
 
-        // --- GATEWAY CHECK (Bot/Stranger Shield) ---
-        function checkGateway() {
+        window.checkGateway = function() {
             const val = document.getElementById('gatewayInput').value.toLowerCase().trim();
             const hashedVal = CryptoJS.SHA256(val).toString();
             
@@ -329,10 +286,9 @@
             } else {
                 alert("Access Denied. Incorrect phrase.");
             }
-        }
+        };
 
-        // --- MASTER KEY SET (Encryption Shield) ---
-        function setMasterKey() {
+        window.setMasterKey = function() {
             const val = document.getElementById('masterKeyInput').value;
             if (val.length < 4) { alert("Key must be stronger."); return; }
             localStorage.setItem('obsidian_master_key', val);
@@ -340,37 +296,11 @@
             document.getElementById('setupKeySection').classList.add('hidden');
             document.getElementById('mainContent').classList.remove('hidden');
             
-            // Connect to Cloud ONLY AFTER Master Key is set
-            if(typeof window.StudioApp.initAuth === 'function') {
-                window.StudioApp.initAuth(); 
-            }
+            initAuth(); 
             renderAll();
-        }
+        };
 
-        function proceedToStudio() {
-            if (!window.StudioApp.masterKey) {
-                // Needs Encryption Key
-                document.getElementById('setupKeySection').classList.remove('hidden');
-            } else {
-                // Fully Cleared -> Enter App and Connect to Cloud
-                document.getElementById('mainContent').classList.remove('hidden');
-                if(typeof window.StudioApp.initAuth === 'function') {
-                    window.StudioApp.initAuth();
-                }
-            }
-        }
-
-        // --- STARTUP LOGIC ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const gatewayCleared = localStorage.getItem('obsidian_gateway_cleared');
-            if (gatewayCleared === 'true') {
-                document.getElementById('gatewaySection').classList.add('hidden');
-                proceedToStudio();
-            }
-        });
-
-        // --- NAVIGATION ---
-        function navigateTo(id) {
+        window.navigateTo = function(id) {
             document.querySelectorAll('section').forEach(s => {
                 if(s.id !== 'gatewaySection' && s.id !== 'setupKeySection') {
                     s.classList.add('hidden-section');
@@ -382,62 +312,89 @@
                 b.classList.toggle('text-white', b.dataset.target === id);
             });
             window.scrollTo(0,0);
-        }
+        };
 
-        // --- DATA OPS ---
-        window.addEventListener('studioDataUpdate', (e) => {
-            rawData[e.detail.type] = e.detail.data;
-            renderAll();
-        });
-
-        async function logState(zone) {
+        window.logState = async function(zone) {
             const user = window.StudioApp.auth.currentUser;
             if (!user) return;
             const path = `artifacts/${window.StudioApp.appId}/users/${user.uid}/zones`;
             const entry = { zone, timestamp: Date.now(), dateStr: new Date().toLocaleDateString() };
-            await addDoc(collection(window.StudioApp.db, path), entry);
-        }
+            await addDoc(collection(db, path), entry);
+        };
 
-        async function saveLog(col, data) {
+        window.saveLog = async function(col, data) {
             const user = window.StudioApp.auth.currentUser;
             if (!user) return;
-            // Prevent empty submissions from enter key press
             if (data.text && !data.text.trim()) return;
 
             const encryptedData = {};
             for (let k in data) encryptedData[k] = window.StudioApp.encrypt(data[k]);
             encryptedData.timestamp = Date.now();
-            await addDoc(collection(window.StudioApp.db, `artifacts/${window.StudioApp.appId}/users/${user.uid}/${col}`), encryptedData);
+            await addDoc(collection(db, `artifacts/${window.StudioApp.appId}/users/${user.uid}/${col}`), encryptedData);
             if (col === 'grimoire') { document.getElementById('morningInput').value = ''; document.getElementById('eveningInput').value = ''; }
-        }
+        };
 
-        async function transmuteDemon() {
+        window.transmuteDemon = async function() {
             const val = document.getElementById('toxicInput').value;
             if (!val.trim()) return;
             const truths = ["This is a construction line.", "Negative Space is structural.", "A critique is a tool.", "The Artist is safe."];
             const truth = truths[Math.floor(Math.random()*truths.length)];
-            await saveLog('demons', { toxic: val, truth: truth });
+            await window.saveLog('demons', { toxic: val, truth: truth });
             document.getElementById('toxicInput').value = '';
-        }
+        };
 
-        async function saveReview() {
+        window.saveReview = async function() {
             const trigger = document.getElementById('revTrigger').value;
             const conditions = document.getElementById('revConditions').value;
             const adjustment = document.getElementById('revAdjustment').value;
-            if (!trigger.trim() && !adjustment.trim()) return; // Prevent empty blank submits
+            if (!trigger.trim() && !adjustment.trim()) return; 
 
-            await saveLog('reviews', { trigger, conditions, adjustment });
+            await window.saveLog('reviews', { trigger, conditions, adjustment });
             document.getElementById('revTrigger').value = ''; document.getElementById('revAdjustment').value = '';
-        }
+        };
 
-        async function deleteItem(col, id) {
+        window.deleteItem = async function(col, id) {
             if (!confirm("Erase from history?")) return;
             const user = window.StudioApp.auth.currentUser;
-            const docRef = doc(window.StudioApp.db, `artifacts/${window.StudioApp.appId}/users/${user.uid}/${col}`, id);
+            const docRef = doc(db, `artifacts/${window.StudioApp.appId}/users/${user.uid}/${col}`, id);
             await deleteDoc(docRef);
+        };
+
+        // --- CORE LOGIC & RENDERERS ---
+
+        async function initAuth() {
+            await signInAnonymously(auth);
         }
 
-        // --- RENDERING ---
+        function proceedToStudio() {
+            if (!window.StudioApp.masterKey) {
+                document.getElementById('setupKeySection').classList.remove('hidden');
+            } else {
+                document.getElementById('mainContent').classList.remove('hidden');
+                initAuth();
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            window.StudioApp.currentUser = user;
+            if (user) {
+                document.getElementById('authStatus').innerText = "Vessel Connected: " + user.uid.substring(0,8);
+                startDataListeners(user.uid);
+            }
+        });
+
+        function startDataListeners(userId) {
+            const collections = ['zones', 'grimoire', 'demons', 'reviews'];
+            collections.forEach(colName => {
+                const q = collection(db, 'artifacts', appId, 'users', userId, colName);
+                onSnapshot(q, (snapshot) => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    rawData[colName] = data;
+                    renderAll();
+                }, (error) => console.error("Database Error:", error));
+            });
+        }
+
         function renderAll() {
             renderZones();
             renderGrimoire();
@@ -538,6 +495,15 @@
                 });
             }
         }
+
+        // --- STARTUP ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const gatewayCleared = localStorage.getItem('obsidian_gateway_cleared');
+            if (gatewayCleared === 'true') {
+                document.getElementById('gatewaySection').classList.add('hidden');
+                proceedToStudio();
+            }
+        });
     </script>
 </body>
 </html>
