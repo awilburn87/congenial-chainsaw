@@ -32,6 +32,16 @@ exports.handler = async function(event, context) {
 
         const data = await response.json();
 
+        // 🛡️ THE BUG FIX: If Google rejects the key (e.g. 403 Forbidden), 
+        // pass the error status forward so the frontend knows it failed!
+        if (!response.ok) {
+            console.error("Google API Error:", data);
+            return {
+                statusCode: response.status,
+                body: JSON.stringify({ error: "Google API rejected the request", details: data })
+            };
+        }
+
         // Send Google's answer back to the frontend
         return {
             statusCode: 200,
