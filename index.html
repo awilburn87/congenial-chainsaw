@@ -12,8 +12,33 @@
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;600&display=swap');
         body { font-family: 'Inter', sans-serif; background-color: #09090b; color: #d4d4d8; overflow-x: hidden; }
         h1, h2, h3, .goth-font { font-family: 'Cinzel', serif; letter-spacing: 0.05em; }
-        @keyframes breathe { 0%, 100% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.5); opacity: 0.2; } }
-        .breathe-circle { animation: breathe 8s infinite ease-in-out; }
+        
+        @-webkit-keyframes boxBreathe {
+            0%   { -webkit-transform: scale(1); opacity: 0.8; }
+            25%  { -webkit-transform: scale(1.6); opacity: 0.1; }
+            50%  { -webkit-transform: scale(1.6); opacity: 0.1; }
+            75%  { -webkit-transform: scale(1); opacity: 0.8; }
+            100% { -webkit-transform: scale(1); opacity: 0.8; }
+        }
+        @keyframes boxBreathe {
+            0%   { transform: scale(1); opacity: 0.8; }
+            25%  { transform: scale(1.6); opacity: 0.1; }
+            50%  { transform: scale(1.6); opacity: 0.1; }
+            75%  { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+        
+        .breathe-circle {
+            opacity: 0;
+            transform-origin: center center;
+            transition: opacity 0.3s ease;
+        }
+        .active-breathe {
+            -webkit-animation: boxBreathe 16s infinite linear;
+            animation: boxBreathe 16s infinite linear;
+            will-change: transform, opacity;
+        }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #09090b; }
         ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 10px; }
@@ -24,6 +49,9 @@
         input, select, textarea { background-color: #18181b !important; border: 1px solid #27272a !important; color: #f4f4f5 !important; border-radius: 2px; }
         input:focus, textarea:focus { border-color: #7f1d1d !important; outline: none; }
         .ledger-container { max-height: 400px; overflow-y: auto; scrollbar-width: thin; }
+        
+        .loading-pulse { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
     </style>
 </head>
 <body class="flex flex-col min-h-screen">
@@ -107,23 +135,25 @@
                 </div>
             </div>
 
-            <!-- Grimoire (Daily) -->
+            <!-- Grimoire (Daily Goal Tracking) -->
             <div class="bg-zinc-950 border border-zinc-900 p-8 rounded-sm">
                 <h3 class="text-xl font-bold text-zinc-200 mb-6 goth-font uppercase tracking-widest">The Daily Grimoire</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="space-y-4">
+                    <div class="space-y-6">
                         <div class="space-y-1">
-                            <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Morning Ward (Energy Boundary)</label>
+                            <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">🌅 The Intent (Goal Setting)</label>
+                            <p class="text-xs text-zinc-600 font-mono mb-2">What specific objective will you conquer today?</p>
                             <div class="flex gap-2">
-                                <input type="text" id="morningInput" onkeydown="handleEnter(event, () => saveLog('grimoire', {type:'morning', text: document.getElementById('morningInput').value}))" class="flex-grow p-2 text-sm bg-black" placeholder="Define your boundary... (Press Enter)">
-                                <button onclick="saveLog('grimoire', {type:'morning', text: document.getElementById('morningInput').value})" class="px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[10px] font-bold uppercase tracking-widest">Seal</button>
+                                <input type="text" id="morningInput" onkeydown="handleEnter(event, () => saveLog('grimoire', {type:'The Intent', text: document.getElementById('morningInput').value}))" class="flex-grow p-2 text-sm bg-black" placeholder="e.g., Draft the initial linework...">
+                                <button onclick="saveLog('grimoire', {type:'The Intent', text: document.getElementById('morningInput').value})" class="px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[10px] font-bold uppercase tracking-widest">Seal</button>
                             </div>
                         </div>
                         <div class="space-y-1">
-                            <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Evening Offering (Creation)</label>
+                            <label class="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">🌙 The Execution (Goal Review)</label>
+                            <p class="text-xs text-zinc-600 font-mono mb-2">What did you actually accomplish? Did you hit the mark?</p>
                             <div class="flex gap-2">
-                                <input type="text" id="eveningInput" onkeydown="handleEnter(event, () => saveLog('grimoire', {type:'evening', text: document.getElementById('eveningInput').value}))" class="flex-grow p-2 text-sm bg-black" placeholder="One small creation... (Press Enter)">
-                                <button onclick="saveLog('grimoire', {type:'evening', text: document.getElementById('eveningInput').value})" class="px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[10px] font-bold uppercase tracking-widest">Seal</button>
+                                <input type="text" id="eveningInput" onkeydown="handleEnter(event, () => saveLog('grimoire', {type:'The Execution', text: document.getElementById('eveningInput').value}))" class="flex-grow p-2 text-sm bg-black" placeholder="e.g., Finished linework, but struggled with hands...">
+                                <button onclick="saveLog('grimoire', {type:'The Execution', text: document.getElementById('eveningInput').value})" class="px-4 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[10px] font-bold uppercase tracking-widest">Seal</button>
                             </div>
                         </div>
                     </div>
@@ -136,16 +166,16 @@
         <section id="critic" class="hidden-section fade-in">
             <div class="mb-12 border-b border-zinc-900 pb-6">
                 <h2 class="text-3xl font-bold text-zinc-100 goth-font tracking-widest uppercase">The Inner Demon</h2>
-                <p class="text-zinc-500 text-sm font-mono">Extract the toxin. Transmute it into structural geometry.</p>
+                <p class="text-zinc-500 text-sm font-mono">Extract the toxin. Let the Obsidian Mirror reframe your thoughts into structural geometry.</p>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="lg:col-span-1 bg-black border border-red-900/30 p-6 rounded-sm shadow-[0_0_20px_rgba(153,27,27,0.05)]">
                     <h3 class="text-red-500 goth-font text-lg mb-4 uppercase tracking-widest">The Whisper</h3>
-                    <textarea id="toxicInput" onkeydown="handleEnter(event, transmuteDemon)" class="w-full h-32 p-3 text-sm mb-4" placeholder="Type the poison here... (Press Enter to submit, Shift+Enter for new line)"></textarea>
-                    <button onclick="transmuteDemon()" class="w-full py-3 bg-red-900/80 hover:bg-red-800 text-white font-bold uppercase tracking-widest text-xs border border-red-700">Transmute</button>
+                    <textarea id="toxicInput" onkeydown="handleEnter(event, transmuteDemon)" class="w-full h-32 p-3 text-sm mb-4" placeholder="Type what you are feeling about your art right now... (Press Enter to submit, Shift+Enter for new line)"></textarea>
+                    <button id="transmuteBtn" onclick="transmuteDemon()" class="w-full py-3 bg-red-900/80 hover:bg-red-800 text-white font-bold uppercase tracking-widest text-xs border border-red-700 transition-all">Transmute</button>
                 </div>
                 <div class="lg:col-span-2 bg-zinc-950 p-6 rounded-sm border border-zinc-900">
-                    <h3 class="text-zinc-400 goth-font text-lg mb-4 uppercase tracking-widest">Transmutations</h3>
+                    <h3 class="text-zinc-400 goth-font text-lg mb-4 uppercase tracking-widest">The Obsidian Mirror</h3>
                     <div id="demonLedger" class="ledger-container space-y-4"></div>
                 </div>
             </div>
@@ -188,17 +218,36 @@
                 <p class="text-red-300/60 font-mono text-sm">Hardware is overloaded. Cease creative execution. Initiate sensory lock.</p>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <!-- Breathing Metronome -->
                 <div class="bg-black border border-zinc-900 p-12 flex flex-col items-center justify-center min-h-[400px]">
-                    <h3 class="goth-font text-zinc-500 uppercase mb-12 tracking-widest">The Metronome</h3>
-                    <div class="relative flex items-center justify-center">
-                        <div class="absolute w-48 h-48 bg-red-900/10 rounded-full breathe-circle"></div>
-                        <div class="relative w-32 h-32 border-2 border-red-900/50 rounded-full flex items-center justify-center">
-                            <div class="w-16 h-16 bg-red-900/30 rounded-full flex items-center justify-center text-[10px] text-red-500 font-bold tracking-widest uppercase">Sync</div>
-                        </div>
+                    <h3 class="goth-font text-zinc-500 uppercase mb-8 tracking-widest">The Metronome</h3>
+                    
+                    <div class="relative flex items-center justify-center mt-4 mb-4">
+                        <div class="absolute w-40 h-40 bg-red-900/40 rounded-full breathe-circle blur-md" data-delay="0s"></div>
+                        <div class="absolute w-28 h-28 bg-red-800/50 rounded-full breathe-circle blur-sm" data-delay="-8s" style="animation-delay: -8s; -webkit-animation-delay: -8s;"></div>
+                        <button onclick="toggleBreathing()" class="relative w-28 h-28 border-2 border-red-900 bg-black rounded-full flex items-center justify-center hover:border-red-500 transition-colors z-10 cursor-pointer shadow-[0_0_15px_rgba(153,27,27,0.3)] group">
+                            <span id="breatheBtnText" class="text-sm text-red-500 font-bold tracking-widest uppercase transition-all duration-300">Initiate</span>
+                        </button>
                     </div>
-                    <p class="mt-12 text-zinc-600 font-mono text-xs">Inhale [4s] - Hold [4s] - Exhale [4s] - Hold [4s]</p>
+                    
+                    <p id="breatheStatusText" class="mt-8 text-zinc-600 font-mono text-xs">System standing by.</p>
                 </div>
+
+                <!-- Grounding Tools -->
                 <div class="space-y-6">
+                    <div class="bg-zinc-950 p-6 border border-zinc-900 relative">
+                        <div class="flex justify-between items-center mb-4 border-b border-zinc-800 pb-2">
+                            <h4 class="text-zinc-200 goth-font uppercase text-xs tracking-widest">⚙️ Hardware Overrides</h4>
+                            <span class="text-[9px] text-zinc-600 font-mono" id="overrideCounter">Protocol 1/8</span>
+                        </div>
+                        <div class="min-h-[80px] flex items-center justify-center bg-black border border-red-900/30 p-4 mb-4 rounded-sm shadow-[0_0_10px_rgba(0,0,0,0.5)]">
+                            <p id="somaticInstruction" class="text-sm text-red-400 font-mono text-center leading-relaxed">Vagus Nerve Shock: Apply freezing water to your face to instantly drop heart rate.</p>
+                        </div>
+                        <button onclick="cycleSomaticReset()" class="w-full bg-zinc-900 border border-zinc-800 p-3 text-xs goth-font uppercase text-zinc-400 hover:text-white hover:border-zinc-500 transition active:scale-[0.98]">
+                            Cycle Next Protocol ⟳
+                        </button>
+                    </div>
+
                     <div class="bg-zinc-950 p-6 border border-zinc-900">
                         <h4 class="text-zinc-200 goth-font uppercase text-xs mb-4 tracking-widest">👁️ Sensory Anchor</h4>
                         <ul class="text-xs text-zinc-500 font-mono space-y-3">
@@ -208,10 +257,6 @@
                             <li>[2] Scents you <span class="text-zinc-100">SMELL</span></li>
                             <li>[1] Flavor you <span class="text-zinc-100">TASTE</span></li>
                         </ul>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <button onclick="alert('Vagus Nerve Shock: Apply freezing water to your face.')" class="bg-zinc-950 border border-zinc-900 p-6 text-xs goth-font uppercase text-zinc-500 hover:text-white transition">Cold Shock</button>
-                        <button onclick="alert('Kinetic Purge: Push against a wall with maximum force for 10s.')" class="bg-zinc-950 border border-zinc-900 p-6 text-xs goth-font uppercase text-zinc-500 hover:text-white transition">Kinetic Reset</button>
                     </div>
                 </div>
             </div>
@@ -225,7 +270,10 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, deleteDoc, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- FIREBASE CONFIGURATION ---
+        // =====================================================================
+        // 🔒 THE GEMINI API KEY IS GONE. IT NOW LIVES SECURELY IN NETLIFY.
+        // =====================================================================
+
         const firebaseConfig = {
             apiKey: "AIzaSyCKN8gS_cvl_y7sMgseOMqPS_N1USdBopU",
             authDomain: "the-obsidian-studio-companion.firebaseapp.com",
@@ -241,17 +289,28 @@
         const db = getFirestore(app);
         const appId = 'the-obsidian-studio-companion';
 
-        // --- APP STATE & SECRETS ---
-        // ASCII for n-i-b-b-l-i-n-g: 110, 105, 98, 98, 108, 105, 110, 103
         const GATEWAY_HASH = CryptoJS.SHA256(String.fromCharCode(110, 105, 98, 98, 108, 105, 110, 103)).toString(); 
         
         let rawData = { zones: [], grimoire: [], demons: [], reviews: [] };
         let chartInstance = null;
 
+        const somaticResets = [
+            "Vagus Nerve Shock: Apply freezing water to your face to instantly drop heart rate.",
+            "Kinetic Purge: Push against a solid wall with maximum physical force for 10 seconds.",
+            "Gravity Tether: Lie flat on a hard floor. Feel gravity physically pulling you down.",
+            "Thermal Anchor: Hold an ice cube until it melts completely in your hand.",
+            "Tactile Override: Find a highly textured surface (brick, raw canvas) and drag your hands across it.",
+            "Acoustic Isolation: Put on noise-canceling headphones with zero music, or heavy drone noise.",
+            "Bilateral Stimulation: Cross your arms and tap your alternating shoulders steadily 20 times.",
+            "Olfactory Shock: Smell something overwhelming to snap your focus (rubbing alcohol, strong coffee, peppermint)."
+        ];
+        let currentSomaticIndex = 0;
+
         window.StudioApp = {
-            db, auth, appId, 
-            currentUser: null,
+            db, auth, appId, currentUser: null,
             masterKey: localStorage.getItem('obsidian_master_key') || null,
+            dataId: null, // Used for cross-device database routing
+            isBreathing: false, breathInterval: null,
             encrypt: (text) => {
                 if (!window.StudioApp.masterKey) return text;
                 return CryptoJS.AES.encrypt(text, window.StudioApp.masterKey).toString();
@@ -266,26 +325,22 @@
             }
         };
 
-        // --- EXPOSED UI FUNCTIONS (Attached to window so HTML buttons can see them) ---
+        // Initialize Data ID if key exists in memory
+        if (window.StudioApp.masterKey) {
+            window.StudioApp.dataId = CryptoJS.SHA256(window.StudioApp.masterKey).toString();
+        }
 
         window.handleEnter = function(event, callback) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault(); 
-                callback();
-            }
+            if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); callback(); }
         };
 
         window.checkGateway = function() {
             const val = document.getElementById('gatewayInput').value.toLowerCase().trim();
-            const hashedVal = CryptoJS.SHA256(val).toString();
-            
-            if (hashedVal === GATEWAY_HASH) {
+            if (CryptoJS.SHA256(val).toString() === GATEWAY_HASH) {
                 document.getElementById('gatewaySection').classList.add('hidden');
                 localStorage.setItem('obsidian_gateway_cleared', 'true');
                 proceedToStudio();
-            } else {
-                alert("Access Denied. Incorrect phrase.");
-            }
+            } else { alert("Access Denied. Incorrect phrase."); }
         };
 
         window.setMasterKey = function() {
@@ -293,18 +348,18 @@
             if (val.length < 4) { alert("Key must be stronger."); return; }
             localStorage.setItem('obsidian_master_key', val);
             window.StudioApp.masterKey = val;
+            
+            // 🛡️ DATA SYNC FIX: Hash the master key to create a cross-device routing ID
+            window.StudioApp.dataId = CryptoJS.SHA256(val).toString();
+            
             document.getElementById('setupKeySection').classList.add('hidden');
             document.getElementById('mainContent').classList.remove('hidden');
-            
             initAuth(); 
-            renderAll();
         };
 
         window.navigateTo = function(id) {
             document.querySelectorAll('section').forEach(s => {
-                if(s.id !== 'gatewaySection' && s.id !== 'setupKeySection') {
-                    s.classList.add('hidden-section');
-                }
+                if(s.id !== 'gatewaySection' && s.id !== 'setupKeySection') s.classList.add('hidden-section');
             });
             document.getElementById(id).classList.remove('hidden-section');
             document.querySelectorAll('.nav-btn').forEach(b => {
@@ -314,33 +369,91 @@
             window.scrollTo(0,0);
         };
 
+        window.toggleBreathing = function() {
+            const btnText = document.getElementById('breatheBtnText');
+            const circles = document.querySelectorAll('.breathe-circle');
+            const statusText = document.getElementById('breatheStatusText');
+
+            if (window.StudioApp.isBreathing) {
+                clearInterval(window.StudioApp.breathInterval);
+                window.StudioApp.isBreathing = false;
+                btnText.innerText = "INITIATE"; statusText.innerText = "System standing by.";
+                circles.forEach(c => { c.classList.remove('active-breathe'); c.style.opacity = '0'; });
+            } else {
+                window.StudioApp.isBreathing = true; statusText.innerText = "Follow the rhythm...";
+                circles.forEach(c => { c.classList.remove('active-breathe'); void c.offsetWidth; c.classList.add('active-breathe'); c.style.opacity = ''; });
+                let phase = 0; const phases = ["INHALE", "HOLD", "EXHALE", "HOLD"];
+                btnText.innerText = phases[0];
+                window.StudioApp.breathInterval = setInterval(() => { phase = (phase + 1) % 4; btnText.innerText = phases[phase]; }, 4000);
+            }
+        };
+
+        window.cycleSomaticReset = function() {
+            currentSomaticIndex = (currentSomaticIndex + 1) % somaticResets.length;
+            const instructionEl = document.getElementById('somaticInstruction');
+            instructionEl.style.opacity = 0; 
+            setTimeout(() => {
+                instructionEl.innerText = somaticResets[currentSomaticIndex];
+                document.getElementById('overrideCounter').innerText = `Protocol ${currentSomaticIndex + 1}/${somaticResets.length}`;
+                instructionEl.style.opacity = 1;
+            }, 150);
+        };
+
         window.logState = async function(zone) {
-            const user = window.StudioApp.auth.currentUser;
-            if (!user) return;
-            const path = `artifacts/${window.StudioApp.appId}/users/${user.uid}/zones`;
+            if (!window.StudioApp.auth.currentUser || !window.StudioApp.dataId) return;
             const entry = { zone, timestamp: Date.now(), dateStr: new Date().toLocaleDateString() };
-            await addDoc(collection(db, path), entry);
+            await addDoc(collection(db, `artifacts/${window.StudioApp.appId}/users/${window.StudioApp.dataId}/zones`), entry);
+            
+            // 🧠 SMART ROUTING UX
+            if (zone === 'red' || zone === 'blue') {
+                window.navigateTo('emergency');
+            }
         };
 
         window.saveLog = async function(col, data) {
-            const user = window.StudioApp.auth.currentUser;
-            if (!user) return;
-            if (data.text && !data.text.trim()) return;
-
+            if (!window.StudioApp.auth.currentUser || !window.StudioApp.dataId || (data.text && !data.text.trim())) return;
             const encryptedData = {};
             for (let k in data) encryptedData[k] = window.StudioApp.encrypt(data[k]);
             encryptedData.timestamp = Date.now();
-            await addDoc(collection(db, `artifacts/${window.StudioApp.appId}/users/${user.uid}/${col}`), encryptedData);
+            await addDoc(collection(db, `artifacts/${window.StudioApp.appId}/users/${window.StudioApp.dataId}/${col}`), encryptedData);
             if (col === 'grimoire') { document.getElementById('morningInput').value = ''; document.getElementById('eveningInput').value = ''; }
         };
 
         window.transmuteDemon = async function() {
             const val = document.getElementById('toxicInput').value;
             if (!val.trim()) return;
-            const truths = ["This is a construction line.", "Negative Space is structural.", "A critique is a tool.", "The Artist is safe."];
-            const truth = truths[Math.floor(Math.random()*truths.length)];
-            await window.saveLog('demons', { toxic: val, truth: truth });
-            document.getElementById('toxicInput').value = '';
+            
+            const btn = document.getElementById('transmuteBtn');
+            const originalBtnText = btn.innerText;
+            btn.innerText = "Transmuting..."; btn.classList.add('loading-pulse'); btn.disabled = true;
+
+            let aiResponse = "";
+            const systemPrompt = "You are 'The Obsidian Mirror', an edgy, alternative artistic mentor helping an artist who struggles with self-doubt. The user will tell you how they are feeling about their art. Your job is to analyze their sentiment. If they are negative or panicking, strip away the emotional poison and rephrase it as a 'structural truth' or 'construction line' (actionable, emotionless advice). If they are positive, validate their growth and creative power using dark/artistic metaphors (e.g., 'The canvas bends to your will.'). Keep your response to a maximum of 2 sentences. Do not use hashtags or emojis.";
+
+            try {
+                const response = await fetch(`/.netlify/functions/gemini-proxy`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: val, systemInstruction: systemPrompt })
+                });
+
+                if(!response.ok) throw new Error("Proxy Network Error");
+                const data = await response.json();
+                aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                
+            } catch (error) {
+                console.error("Mirror offline. Falling back to internal cache.", error);
+                const fallbacks = [
+                    "This is merely a construction line. It is meant to be painted over.",
+                    "Negative Space is required for structure. Rest is a creative act.",
+                    "Correction is a sharp tool, not an execution. Use the data.",
+                    "The canvas may be ruined, but the Artist remains unharmed."
+                ];
+                aiResponse = fallbacks[Math.floor(Math.random()*fallbacks.length)];
+            }
+
+            await window.saveLog('demons', { toxic: val, truth: aiResponse });
+            document.getElementById('toxicInput').value = ''; btn.innerText = originalBtnText; btn.classList.remove('loading-pulse'); btn.disabled = false;
         };
 
         window.saveReview = async function() {
@@ -348,160 +461,96 @@
             const conditions = document.getElementById('revConditions').value;
             const adjustment = document.getElementById('revAdjustment').value;
             if (!trigger.trim() && !adjustment.trim()) return; 
-
             await window.saveLog('reviews', { trigger, conditions, adjustment });
             document.getElementById('revTrigger').value = ''; document.getElementById('revAdjustment').value = '';
         };
 
         window.deleteItem = async function(col, id) {
             if (!confirm("Erase from history?")) return;
-            const user = window.StudioApp.auth.currentUser;
-            const docRef = doc(db, `artifacts/${window.StudioApp.appId}/users/${user.uid}/${col}`, id);
-            await deleteDoc(docRef);
+            await deleteDoc(doc(db, `artifacts/${window.StudioApp.appId}/users/${window.StudioApp.dataId}/${col}`, id));
         };
 
-        // --- CORE LOGIC & RENDERERS ---
-
-        async function initAuth() {
-            await signInAnonymously(auth);
-        }
+        async function initAuth() { await signInAnonymously(auth); }
 
         function proceedToStudio() {
-            if (!window.StudioApp.masterKey) {
-                document.getElementById('setupKeySection').classList.remove('hidden');
-            } else {
-                document.getElementById('mainContent').classList.remove('hidden');
-                initAuth();
-            }
+            if (!window.StudioApp.masterKey) { document.getElementById('setupKeySection').classList.remove('hidden'); } 
+            else { document.getElementById('mainContent').classList.remove('hidden'); initAuth(); }
         }
 
         onAuthStateChanged(auth, (user) => {
             window.StudioApp.currentUser = user;
-            if (user) {
-                document.getElementById('authStatus').innerText = "Vessel Connected: " + user.uid.substring(0,8);
-                startDataListeners(user.uid);
+            if (user) { 
+                document.getElementById('authStatus').innerText = "Vessel Connected: " + user.uid.substring(0,8); 
+                if(window.StudioApp.dataId) startDataListeners(); 
             }
         });
 
-        function startDataListeners(userId) {
+        function startDataListeners() {
+            if (!window.StudioApp.dataId) return;
             const collections = ['zones', 'grimoire', 'demons', 'reviews'];
             collections.forEach(colName => {
-                const q = collection(db, 'artifacts', appId, 'users', userId, colName);
-                onSnapshot(q, (snapshot) => {
-                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    rawData[colName] = data;
-                    renderAll();
+                onSnapshot(collection(db, 'artifacts', appId, 'users', window.StudioApp.dataId, colName), (snapshot) => {
+                    rawData[colName] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); renderAll();
                 }, (error) => console.error("Database Error:", error));
             });
         }
 
-        function renderAll() {
-            renderZones();
-            renderGrimoire();
-            renderDemons();
-            renderReviews();
-            updateChart();
-        }
+        function renderAll() { renderZones(); renderGrimoire(); renderDemons(); renderReviews(); updateChart(); }
 
         function renderZones() {
-            const list = document.getElementById('zoneLedger');
-            list.innerHTML = '';
+            const list = document.getElementById('zoneLedger'); list.innerHTML = '';
             const labels = { green: '🕯️ Ritual', red: '🩸 Inferno', blue: '🕳️ Abyss' };
-            const sorted = [...rawData.zones].sort((a,b) => b.timestamp - a.timestamp);
-            sorted.forEach(z => {
-                const div = document.createElement('div');
-                div.className = "flex justify-between items-center bg-black/40 p-3 border border-zinc-900 text-[10px]";
-                div.innerHTML = `<div><span class="text-zinc-600 mr-2 font-mono">${new Date(z.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span><span class="font-bold uppercase tracking-widest text-zinc-300">${labels[z.zone]}</span></div>
-                <button onclick="deleteItem('zones', '${z.id}')" class="text-zinc-800 hover:text-red-900">✕</button>`;
+            [...rawData.zones].sort((a,b) => b.timestamp - a.timestamp).forEach(z => {
+                const div = document.createElement('div'); div.className = "flex justify-between items-center bg-black/40 p-3 border border-zinc-900 text-[10px]";
+                div.innerHTML = `<div><span class="text-zinc-600 mr-2 font-mono">${new Date(z.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span><span class="font-bold uppercase tracking-widest text-zinc-300">${labels[z.zone]}</span></div><button onclick="deleteItem('zones', '${z.id}')" class="text-zinc-800 hover:text-red-900">✕</button>`;
                 list.appendChild(div);
             });
         }
 
         function renderGrimoire() {
-            const list = document.getElementById('grimoireLedger');
-            list.innerHTML = '';
+            const list = document.getElementById('grimoireLedger'); list.innerHTML = '';
             [...rawData.grimoire].sort((a,b) => b.timestamp - a.timestamp).forEach(g => {
-                const div = document.createElement('div');
-                div.className = "border-b border-zinc-900/50 pb-2 mb-2 last:border-0";
-                div.innerHTML = `<div class="flex justify-between items-start mb-1">
-                    <span class="text-[8px] font-bold text-zinc-600 tracking-widest uppercase">${window.StudioApp.decrypt(g.type)}</span>
-                    <button onclick="deleteItem('grimoire', '${g.id}')" class="text-[10px] text-zinc-800 hover:text-red-900">✕</button>
-                </div><p class="text-xs italic text-zinc-400">"${window.StudioApp.decrypt(g.text)}"</p>`;
+                const div = document.createElement('div'); div.className = "border-b border-zinc-900/50 pb-2 mb-2 last:border-0";
+                div.innerHTML = `<div class="flex justify-between items-start mb-1"><span class="text-[8px] font-bold text-zinc-600 tracking-widest uppercase">${window.StudioApp.decrypt(g.type)}</span><button onclick="deleteItem('grimoire', '${g.id}')" class="text-[10px] text-zinc-800 hover:text-red-900">✕</button></div><p class="text-xs italic text-zinc-400">"${window.StudioApp.decrypt(g.text)}"</p>`;
                 list.appendChild(div);
             });
         }
 
         function renderDemons() {
-            const list = document.getElementById('demonLedger');
-            list.innerHTML = '';
+            const list = document.getElementById('demonLedger'); list.innerHTML = '';
             [...rawData.demons].sort((a,b) => b.timestamp - a.timestamp).forEach(d => {
-                const div = document.createElement('div');
-                div.className = "bg-black p-4 border-l-2 border-red-900 space-y-2 flex justify-between";
-                div.innerHTML = `<div class="w-full">
-                    <div class="text-[9px] text-red-950 font-bold uppercase mb-1 tracking-widest">Demon: "${window.StudioApp.decrypt(d.toxic)}"</div>
-                    <div class="text-xs text-zinc-300 font-mono italic whitespace-pre-wrap">"${window.StudioApp.decrypt(d.truth)}"</div>
-                </div><button onclick="deleteItem('demons', '${d.id}')" class="text-zinc-800 hover:text-red-900">✕</button>`;
+                const div = document.createElement('div'); div.className = "bg-black p-4 border-l-2 border-red-900 space-y-2 flex justify-between";
+                div.innerHTML = `<div class="w-full"><div class="text-[9px] text-zinc-600 font-mono mb-1">${new Date(d.timestamp).toLocaleDateString()}</div><div class="text-[9px] text-red-950 font-bold uppercase mb-1 tracking-widest">User: "${window.StudioApp.decrypt(d.toxic)}"</div><div class="text-xs text-zinc-300 font-mono italic whitespace-pre-wrap">"${window.StudioApp.decrypt(d.truth)}"</div></div><button onclick="deleteItem('demons', '${d.id}')" class="text-zinc-800 hover:text-red-900">✕</button>`;
                 list.appendChild(div);
             });
         }
 
         function renderReviews() {
-            const list = document.getElementById('reviewLedger');
-            list.innerHTML = '';
+            const list = document.getElementById('reviewLedger'); list.innerHTML = '';
             [...rawData.reviews].sort((a,b) => b.timestamp - a.timestamp).forEach(r => {
-                const div = document.createElement('div');
-                div.className = "bg-zinc-950 p-5 border border-zinc-900 space-y-3";
-                div.innerHTML = `<div class="flex justify-between border-b border-zinc-900 pb-2 mb-2">
-                    <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">${new Date(r.timestamp).toLocaleDateString()}</span>
-                    <button onclick="deleteItem('reviews', '${r.id}')" class="text-zinc-800 hover:text-red-900">✕</button>
-                </div>
-                <div class="text-xs text-zinc-400"><span class="text-[8px] block uppercase tracking-widest font-bold mb-1 opacity-40">Catalyst</span> ${window.StudioApp.decrypt(r.trigger)}</div>
-                <div class="text-xs text-zinc-400"><span class="text-[8px] block uppercase tracking-widest font-bold mb-1 opacity-40">Vessel State</span> ${window.StudioApp.decrypt(r.conditions)}</div>
-                <div class="text-xs text-zinc-300 italic whitespace-pre-wrap">"${window.StudioApp.decrypt(r.adjustment)}"</div>`;
+                const div = document.createElement('div'); div.className = "bg-zinc-950 p-5 border border-zinc-900 space-y-3";
+                div.innerHTML = `<div class="flex justify-between border-b border-zinc-900 pb-2 mb-2"><span class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">${new Date(r.timestamp).toLocaleDateString()}</span><button onclick="deleteItem('reviews', '${r.id}')" class="text-zinc-800 hover:text-red-900">✕</button></div><div class="text-xs text-zinc-400"><span class="text-[8px] block uppercase tracking-widest font-bold mb-1 opacity-40">Catalyst</span> ${window.StudioApp.decrypt(r.trigger)}</div><div class="text-xs text-zinc-400"><span class="text-[8px] block uppercase tracking-widest font-bold mb-1 opacity-40">Vessel State</span> ${window.StudioApp.decrypt(r.conditions)}</div><div class="text-xs text-zinc-300 italic whitespace-pre-wrap">"${window.StudioApp.decrypt(r.adjustment)}"</div>`;
                 list.appendChild(div);
             });
         }
 
         function updateChart() {
             const counts = { green: [0,0,0,0,0,0,0], red: [0,0,0,0,0,0,0], blue: [0,0,0,0,0,0,0] };
-            const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-            rawData.zones.forEach(z => {
-                const d = new Date(z.timestamp);
-                const dayIdx = (d.getDay() + 6) % 7;
-                counts[z.zone][dayIdx]++;
-            });
+            rawData.zones.forEach(z => { counts[z.zone][(new Date(z.timestamp).getDay() + 6) % 7]++; });
             if (chartInstance) {
-                chartInstance.data.datasets[0].data = counts.green;
-                chartInstance.data.datasets[1].data = counts.red;
-                chartInstance.data.datasets[2].data = counts.blue;
-                chartInstance.update();
+                chartInstance.data.datasets[0].data = counts.green; chartInstance.data.datasets[1].data = counts.red; chartInstance.data.datasets[2].data = counts.blue; chartInstance.update();
             } else {
-                const ctx = document.getElementById('stateChart').getContext('2d');
-                chartInstance = new Chart(ctx, {
+                chartInstance = new Chart(document.getElementById('stateChart').getContext('2d'), {
                     type: 'bar',
-                    data: {
-                        labels: days,
-                        datasets: [
-                            { label: 'Ritual', data: counts.green, backgroundColor: '#d4d4d8' },
-                            { label: 'Inferno', data: counts.red, backgroundColor: '#7f1d1d' },
-                            { label: 'Abyss', data: counts.blue, backgroundColor: '#312e81' }
-                        ]
-                    },
-                    options: { 
-                        responsive: true, maintainAspectRatio: false, 
-                        scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#52525b', font: {family: 'monospace'} } }, y: { stacked: true, beginAtZero: true, grid: { color: '#18181b' }, ticks: { color: '#52525b', stepSize: 1 } } },
-                        plugins: { legend: { display: false } }
-                    }
+                    data: { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], datasets: [ { label: 'Ritual', data: counts.green, backgroundColor: '#d4d4d8' }, { label: 'Inferno', data: counts.red, backgroundColor: '#7f1d1d' }, { label: 'Abyss', data: counts.blue, backgroundColor: '#312e81' } ] },
+                    options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true, grid: { display: false }, ticks: { color: '#52525b', font: {family: 'monospace'} } }, y: { stacked: true, beginAtZero: true, grid: { color: '#18181b' }, ticks: { color: '#52525b', stepSize: 1 } } }, plugins: { legend: { display: false } } }
                 });
             }
         }
 
-        // --- STARTUP ---
         document.addEventListener('DOMContentLoaded', () => {
-            const gatewayCleared = localStorage.getItem('obsidian_gateway_cleared');
-            if (gatewayCleared === 'true') {
-                document.getElementById('gatewaySection').classList.add('hidden');
-                proceedToStudio();
+            if (localStorage.getItem('obsidian_gateway_cleared') === 'true') {
+                document.getElementById('gatewaySection').classList.add('hidden'); proceedToStudio();
             }
         });
     </script>
