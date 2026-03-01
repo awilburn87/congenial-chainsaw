@@ -23,8 +23,8 @@ exports.handler = async function(event, context) {
             systemInstruction: { parts: [{ text: systemInstruction }] }
         };
 
-        // Forward the request to Google
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        // Forward the request to Google using the latest Gemini 3.0 Flash production model
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
