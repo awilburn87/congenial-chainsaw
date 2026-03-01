@@ -23,8 +23,8 @@ exports.handler = async function(event, context) {
             systemInstruction: { parts: [{ text: systemInstruction }] }
         };
 
-        // Forward the request to Google using the latest Gemini 3.0 Flash production model
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent?key=${apiKey}`, {
+        // 🛠️ THE FIX: Using the stable gemini-2.5-flash production model
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -32,8 +32,7 @@ exports.handler = async function(event, context) {
 
         const data = await response.json();
 
-        // 🛡️ THE BUG FIX: If Google rejects the key (e.g. 403 Forbidden), 
-        // pass the error status forward so the frontend knows it failed!
+        // If Google rejects the key or payload, pass the error forward
         if (!response.ok) {
             console.error("Google API Error:", data);
             return {
